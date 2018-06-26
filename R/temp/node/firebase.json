@@ -1,0 +1,35 @@
+{
+  "functions": {
+    "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" run lint"
+    ],
+    "source": "functions"
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/v1/wallet", "function": "wallet"
+      },
+      {
+        "source": "/v1/transactions", "function": "transaction"
+      },
+      {
+        "source": "/v2/transaction", "function": "transactionfor1"
+      },
+      {
+        "source": "/v1/transfer", "function": "transfer"
+      },
+      {
+        "source": "/v2/reserve", "function": "reserve"
+      },
+      {
+        "source": "/v2/reserve/transfer", "function": "reserveTransfer"
+      }
+    ]
+  }
+}
