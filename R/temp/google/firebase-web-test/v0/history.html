@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>history</title>
+    <!--<link rel="stylesheet" href="css/bootstrap.min.css">-->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+    <style>
+      h1 {
+          margin-top: 10px;
+          padding: 0.5em;
+          color: #010101;
+          background: #eaf3ff;
+          border-bottom: solid 3px #516ab6;
+          }
+       p  {margin:20px;}
+    </style>
+  </head>
+  <body>
+      <div class="container">
+          <h1>取引履歴</h1>
+          <div id="sashikomi"></div>
+        <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>取引日時</th>
+                <th>取引区分</th>
+                <th>取引額</th>
+                <th>取引先アドレス</th>
+              </tr>
+            </thead>
+            <tbody id="history_append">
+            </tbody>
+        </table>
+    </div>
+  </body>
+    <script src="https://www.gstatic.com/firebasejs/5.0.4/firebase.js"></script>
+    <script>
+      // Initialize Firebase
+      var config = {
+        apiKey: "AIzaSyA9NoG5ypxDd_4LLxBfqslwqytlFmKRHnc",
+        authDomain: "test-payment-ee17b.firebaseapp.com",
+        databaseURL: "https://test-payment-ee17b.firebaseio.com",
+        projectId: "test-payment-ee17b",
+        storageBucket: "test-payment-ee17b.appspot.com",
+        messagingSenderId: "948810343124"
+      };
+      firebase.initializeApp(config);
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
+    <script>
+       var q_address;
+       var qp = $(location).attr('search').substring(1);
+       if(!qp){
+        $('#sashikomi').append("<p>param入れて</p>");
+       }else{
+        var qplist = qp.split("&");
+        for(i=0; qplist[i]; i++){
+          var k = qplist[i].split("=");
+          if(k[0] == "address"){
+            q_address = k[1];
+          }
+        }
+        if(!q_address){
+          $('#sashikomi').append("<p>param不正</p>");
+        }else{
+          $('#sashikomi').append('<p>口座番号:'+q_address+"</p>");
+
+         // 履歴取得
+         var db = firebase.database();
+         var historyRoot = db.ref("/wallets/"+q_address+"/transactions/");
+         historyRoot.on("value",function(snapshot){
+          var transfers = snapshot.val();
+          var array = Object.keys(transfers).map(key => transfers[key]);
+          var j = 1;
+          for(var i in array){
+           $('#history_append').append("<tr><td>"+j+"</td><td>"+array[i].timestamp+"</td><td>"+array[i].transactionType+"</td><td>"+array[i].amount+"</td><td>"+array[i].targetAddress+"</td>");
+           j++;
+          }
+         });
+        }
+      }
+    </script>
+</html>
