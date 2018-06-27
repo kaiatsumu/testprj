@@ -6,11 +6,16 @@
         <link rel="stylesheet" href="test.css">
     </head>
     <body>
-        <input type=text size=16 placeholder="Tracking Code" class=qrcode-text>
+        <input type=text size=16 placeholder="userAddress" class=qrcode-text id="fromAddress">
         <label class=qrcode-text-btn>
             <input type=file accept="image/*" capture=environment onchange="openQRCamera(this);" tabindex=-1>
         </label> 
-        <input type=button value="Go" disabled>
+        <div>
+          <input type=text size=16 placeholder="amount" id="amount"><br/>
+          <input type=text size=16 placeholder="toAddress" id="toAddress">
+        </div>
+        <input type=button id="ajax" value="go">
+        <div id="message"></div>
     </body>
     <script src="https://rawgit.com/sitepoint-editors/jsqrcode/master/src/qr_packed.js"></script>
     <script>
@@ -29,5 +34,43 @@
       };
       reader.readAsDataURL(node.files[0]);
     }
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script type="text/javascript">
+        $(function(){
+            // Ajax button click
+            $('#ajax').on('click',function(){
+                var fromAddress = $('#fromAddress').val();
+                var ajaxurl = '/v2/reserve?address='+fromAddress;
+                var postData = {
+                        'amount':$('#amount').val(),
+                        'toAddress':$('#toAddress').val(),
+                        'billNo': 'w001'
+                    };
+                $.ajax({
+                    url: ajaxurl,
+                    type:'post',
+                    contentType: 'application/json',
+                    data:JSON.stringify(postData),
+                    dataType: 'JSON'
+                })
+                // Ajaxリクエストが成功した時発動
+                .done( (data) => {
+                    console.log('success');
+                    console.log(data.key);
+                    $('#message').append("<p>お客様に確認依頼を送信しました。ID:"+data.key+"</p>");
+                })
+                // Ajaxリクエストが失敗した時発動
+                .fail( (data) => {
+                    console.log('faild');
+                    $('#message').append("<p>失敗しました</p>");
+                })
+                // Ajaxリクエストが成功・失敗どちらでも発動
+                .always( (data) => {
+                    console.log('allways');
+                });
+            });
+        });
+
     </script>
 </html>
