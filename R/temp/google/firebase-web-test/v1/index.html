@@ -6,7 +6,7 @@
         <link rel="stylesheet" href="test.css">
     </head>
     <body>
-        <input type=text size=16 placeholder="userAddress" class=qrcode-text id="fromAddress">
+        <input type=text size=16 placeholder="paymentcode" class=qrcode-text id="paymentCode">
         <label class=qrcode-text-btn>
             <input type=file accept="image/*" capture=environment onchange="openQRCamera(this);" tabindex=-1>
         </label> 
@@ -40,11 +40,11 @@
         $(function(){
             // Ajax button click
             $('#ajax').on('click',function(){
-                var fromAddress = $('#fromAddress').val();
-                var ajaxurl = '/v2/reserve?address='+fromAddress;
+                var ajaxurl = '/v2/transfer';
                 var postData = {
                         'amount':$('#amount').val(),
                         'toAddress':$('#toAddress').val(),
+                        'targetKey': $('#paymentCode').val(),
                         'billNo': 'w001'
                     };
                 $.ajax({
@@ -57,8 +57,7 @@
                 // Ajaxリクエストが成功した時発動
                 .done( (data) => {
                     console.log('success');
-                    console.log(data.key);
-                    $('#message').append("<p>お客様に確認依頼を送信しました。ID:"+data.key+"</p>");
+                    $('#message').append("<p>決済完了。履歴を確認ください</p>");
                 })
                 // Ajaxリクエストが失敗した時発動
                 .fail( (data) => {

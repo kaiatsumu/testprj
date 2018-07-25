@@ -29,6 +29,9 @@
       },
       {
         "source": "/v2/reserve/transfer", "function": "reserveTransfer"
+      },
+      {
+        "source": "/v2/transfer", "function": "transfer2"
       }
     ]
   }

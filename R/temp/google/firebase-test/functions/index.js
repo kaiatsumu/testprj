@@ -284,6 +284,157 @@ exports.reserveTransfer = functions.https.onRequest((request, response) => {
   }
 });
 
+// qrコードキー取得
+// url            : /newKey
+// hosting-url    : TBD
+// method         : GET
+// request-param  : address
+// content-type   : applicatoin/json
+// request-body   : -
+// responce-body  : {key:xxx}
+// responce-state : 200 -> success , 406-> 残高不足 , 500 -> system-error
+// TODO://本当はPOST説
+exports.newKey = functions.https.onRequest((request, response) => {
+ if (request.method === "GET"){
+    const address = request.query.address;
+    admin.database().ref("/wallets/"+address+"/balance").once("value").then(snapshot => {
+      // 残金の存在チェック
+      const beforebalance = snapshot.val();
+      const newKey = admin.database().ref("/wallets/"+address+"/keys").push().key;
+       const responseData = {
+          key: newKey
+        };
+        const obj = {
+          expire : new Date().toLocaleString()
+        }
+        var updates = {};
+        updates["/wallets/"+address+"/keys/"+newKey+"/"] = obj;
+        admin.database().ref().update(updates);
+        return response.status(200).send(responseData).end();
+    }).catch(error => {
+        console.log("reference error", error);
+        return response.status(500).end();
+    }); 
+
+ } else{
+    response.status(404).end();
+ }
+});
+
+// keyStatus
+// url            : /keyStatus
+// hosting-url    : TBD
+// method         : GET
+// request-param  : address,key
+// responce       : json(transaction-entity)
+// responce-state : 200 -> success , 500 -> system-error
+//
+exports.keyStatus = functions.https.onRequest((request, response) => {
+ if (request.method === "GET"){
+    const address = request.query.address;
+    const key     = request.query.key;
+    admin.database().ref("/wallets/"+address+"/keys/"+key).once("value").then(snapshot => {
+        const transfer = snapshot.val();
+        return response.status(200).json(transfer).end();
+    }).catch(error => {
+        console.log("reference error", error);
+        return response.status(500).end();
+    }); 
+
+ } else{
+    response.status(404).end();
+ }
+});
+
+
+// 送金API
+// url            : /transfer2
+// hosting-url    : /v2/transfer
+// method         : POST
+// request-param  : ー
+// content-type   : applicatoin/json
+// request-body   :{"targetKey": "対象決済コード" , toAddress": "送金先アドレス" , "amount": "取引額 , "billNo": "請求no"}
+// responce-state : 200 -> success , 406-> 残高不足 , 500 -> system-error
+//
+exports.transfer2 = functions.https.onRequest((request, response) => {
+ if(request.method === "POST") {
+  const body = request.body;
+  const address = "9903";//TODO:tagetKeyから取得するようにする
+  const amount = body["amount"];
+  const targetAddress = body["toAddress"];
+  const targetKey = body["targetKey"]
+
+    admin.database().ref("/wallets/"+address+"/balance").once("value").then(snapshot => {
+        // 自身の情報更新
+        const beforebalance = snapshot.val();
+        if(snapshot.exists()){
+            const afterbalance = parseInt(beforebalance) - parseInt(amount);
+            console.log("balance exists", beforebalance, afterbalance);
+            if(0 > afterbalance){
+                return response.status(406).send("残高不足").end();
+            }
+            // 本当はonlineで更新しない(triggerか別バッチとか)
+            admin.database().ref("/wallets/"+address+"/balance").set(afterbalance);
+
+        }else{
+            console.log("balance not exists", address);
+            return response.status(406).send("残高なし").end();
+        }
+
+        admin.database().ref("/wallets/"+address+"/transactions").push().set({
+            targetAddress: body["toAddress"]
+            ,amount: body["amount"]
+            ,billNo: body["billNo"]
+            ,timestamp: new Date().toLocaleString()
+            ,transactionType: "送金"
+            ,status : "02"
+        });
+
+        // 対抗のアドレス情報更新（本当はtriggerとかでやりたかったが、sparkだと使えなさそうなので・・・）
+        return admin.database().ref("/wallets/"+targetAddress+"/balance").once("value").then(snapshot => {
+            if(snapshot.exists()){
+                const taragetBeforebalance = snapshot.val();
+                const targetafterbalance =  parseInt(taragetBeforebalance) + parseInt(amount);
+                console.log("target balance exists", snapshot.val(), targetafterbalance);
+                admin.database().ref("/wallets/"+targetAddress+"/balance").set(targetafterbalance);
+            }else{
+                console.log("target balance not exists", "0", amount);
+                admin.database().ref("/wallets/"+targetAddress+"/balance").set(amount);
+            }
+            
+            admin.database().ref("/wallets/"+targetAddress+"/transactions").push().set({
+                targetAddress: address
+                ,amount: body["amount"]
+                ,billNo: body["billNo"]
+                ,timestamp: new Date().toLocaleString()
+                ,transactionType: "着金" 
+                ,status : "02"
+            });
+
+          // 対象、決済コードのupdate
+          // TODO:決済コードの有効チェック
+          var updates = {};
+          updates["/wallets/"+address+"/keys/"+targetKey+"/amount/"] = amount;
+          updates["/wallets/"+address+"/keys/"+targetKey+"/status/"] = "done";
+          updates["/wallets/"+address+"/keys/"+targetKey+"/updTm/"] = new Date().toLocaleString();
+          //TODO:決済transaction keyをセット？
+          const responseObj = {status: "success"};
+          admin.database().ref().update(updates);
+            return response.status(200).send(responseObj).end();
+        }).catch(error => {
+            console.log("reference error", error);
+            return response.status(500).end();
+        }); 
+
+    }).catch(error => {
+        console.log("reference error", error);
+        return response.status(500).end();
+    }); 
+
+  } else {
+   response.status(404).end();
+  }
+});
 
 // 本当はこれで実装したかった・・・(lint script error?)
 // 非同期で対向アドレスの情報をupdateする。
